@@ -5,19 +5,43 @@ import { FaRegBookmark } from "react-icons/fa6";
 import { FaTrash } from "react-icons/fa";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-
+import { QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {toast} from "react-hot-toast"
+import LoadingSpinner from "./LoadingSpinner";
 const Post = ({ post }) => {
+	const queryClient = useQueryClient()
+	const {data : authUser} = useQuery({queryKey : ['authUser']})
+	const {mutate: deletePost, isPending}= useMutation({
+		mutationFn : async () =>{
+		try {
+			const res = await fetch(`/api/posts/${post._id}`,{
+				method :'DELETE',
+			})
+			const data = await res.json()
+			return data ;
+		}
+		catch(e){
+			throw new Error("Error")
+			}
+		},
+		onSuccess : () => {
+			toast.success("POST DELETED SCCESSFULY")
+			queryClient.invalidateQueries({queryKey : ["posts"]})
+		}
+	})
 	const [comment, setComment] = useState("");
 	const postOwner = post.user;
 	const isLiked = false;
 
-	const isMyPost = true;
+	const isMyPost = authUser._id === post.user._id;
 
 	const formattedDate = "1h";
 
 	const isCommenting = false;
 
-	const handleDeletePost = () => {};
+	const handleDeletePost = () => {
+		deletePost()
+	};
 
 	const handlePostComment = (e) => {
 		e.preventDefault();
@@ -36,7 +60,7 @@ const Post = ({ post }) => {
 				<div className='flex flex-col flex-1'>
 					<div className='flex gap-2 items-center'>
 						<Link to={`/profile/${postOwner.username}`} className='font-bold'>
-							{postOwner.fullName}
+							{postOwner.fullname}
 						</Link>
 						<span className='text-gray-700 flex gap-1 text-sm'>
 							<Link to={`/profile/${postOwner.username}`}>@{postOwner.username}</Link>
@@ -45,7 +69,10 @@ const Post = ({ post }) => {
 						</span>
 						{isMyPost && (
 							<span className='flex justify-end flex-1'>
-								<FaTrash className='cursor-pointer hover:text-red-500' onClick={handleDeletePost} />
+								{!isPending &&<FaTrash className='cursor-pointer hover:text-red-500' onClick={handleDeletePost} />}
+								{isPending && (
+									<LoadingSpinner/>
+								)}
 							</span>
 						)}
 					</div>
@@ -91,7 +118,7 @@ const Post = ({ post }) => {
 												</div>
 												<div className='flex flex-col'>
 													<div className='flex items-center gap-1'>
-														<span className='font-bold'>{comment.user.fullName}</span>
+														<span className='font-bold'>{comment.user.fullname}</span>
 														<span className='text-gray-700 text-sm'>
 															@{comment.user.username}
 														</span>
